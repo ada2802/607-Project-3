@@ -1,0 +1,172 @@
+---
+title: "607 Project 3 Data Scientist Skills"
+author: "Chunmei Zhu"
+date: "October 21, 2017"
+output: html_document
+---
+## Data Scientist Skills in IT
+In this project, I focuse on skill sets of Data Scienctis in information technology industry. The data souce of the job description for data Scientist are from Linkedin, Google Job, Indeed and Glassdoor. 
+
+##load data from HTML file to R
+
+```{r }
+library(XML)
+library(RCurl)
+library(xlsx)
+library(rvest)
+library(stringr)
+library(dplyr)
+
+# build a data fram to store values
+company=c()
+link=c()
+jobName=c()
+reqSkills=c()
+
+```
+
+### Web Scraping in indeed.com
+
+Job1: Data Science Intern-Samsung Pay 
+
+```{r }
+con = url("http://samsungresearchamerica.applytojob.com/apply/job_20171013044600_CBVZWKVBUBHPMYQD/Data-Science-InternSamsung-Pay?source=INDE")
+htmlCode = readLines(con)
+
+link=con
+
+df<-unlist(strsplit(htmlCode[5], "-"))
+jobName<-df[1]
+company<-df[3]
+
+#require<-jobrequire<-htmlCode[215:226]
+require<-str_replace_all(htmlCode[215:226], "<li>", "")
+reqSkills<- str_replace_all(require, "</li>", "")
+reqSkills
+
+job1<-data.frame(company,jobName,reqSkills)
+head(job1)
+#dim(job1)
+```
+
+### Web Scraping in a company website
+
+Job2: Data Science in Microsoft
+
+```{r }
+url2<-read_html("https://careers.microsoft.com/jobdetails.aspx?jid=324590&job_id=1075466&utm_source=Indeed&show_desc=0")
+
+extractHTML<-htmlTreeParse(url2, useInternalNodes = TRUE)
+htmldf = unlist(xpathApply(extractHTML, "//span", xmlValue))
+
+company<-"Microsoft"
+jobName<-"Data Science"
+
+df<-unlist(strsplit(htmldf[13], "[.]"))
+reqSkills<-unlist(strsplit(df[21:28], split = ",", fixed = TRUE))
+reqSkills<- str_replace_all(reqSkills, "[. ]","")
+
+job2<-data.frame(company,jobName,reqSkills)
+head(job2)
+#dim(job2)
+
+# Combin two jobs into a table
+library(dplyr)
+db<-rbind(job1, job2)
+#db
+```
+
+### Web Scraping in glassdoor
+
+job3: Data Scientist, Global Premium Services, Google Technical Services Professional Services 
+
+```{r }
+url3<-read_html("https://www.glassdoor.com/job-listing/data-scientist-global-premium-services-google-technical-services-professional-services-google-JV_IC1132348_KO0,86_KE87,93.htm?jl=2516839891" )
+
+extractHTML<-htmlTreeParse(url3, useInternalNodes = TRUE)
+htmldf = unlist(xpathApply(extractHTML, "//div", xmlValue))
+
+df<-unlist(strsplit(htmldf[59], ","))
+jobName<-df[1]
+company<-"Google"
+
+reqSkills<-unlist(strsplit(htmldf[75], "[.]"))
+reqSkills<-unlist(strsplit(reqSkills, split = ",", fixed = TRUE))
+
+job3<-data.frame(company,jobName,reqSkills)
+head(job3)
+#dim(job3)
+
+#Update the database
+db<-rbind(db, job3)
+#db
+```
+
+### Web Scraping in Dice
+
+Job4: Data Scientist - Engineering Client Support in Bloomberg L.P.
+
+```{r}
+df <-read_html("https://www.dice.com/jobs/detail/Data-Scientist-%26%2345-Engineering-Client-Support-Bloomberg-L.P.-New-York-NY-10001/10432313/59225?icid=sr8-1p&q=Data+Scientist&l=")
+
+jobName<-df%>% html_nodes("#jt") %>% html_text()
+ 
+company<-df %>% html_nodes("span") %>% html_text()
+company<-company[14]
+
+df<-df %>% html_nodes("li") %>% html_text()
+reqSkills<-df[51:60]
+
+job4<-data.frame(company,jobName,reqSkills)
+head(job4)
+#dim(job4)
+
+#grepl("R",job4$reqSkills)
+
+#Update the database
+db<-rbind(db, job4)
+head(db)
+```
+
+## Find the top required skills of Data Scientist Skills in IT
+
+"Which are the most valued data science skills?"
+
+Answer: The most valued data sciend skills are SQL, Python, web analysis, machine learning, Java. IT companies prefer more programing skills, like Python and SQL, and analysis skill like machine learning to analyze web data. The communication also is one to top soft skills that helps in teamwork and precentation while many jobs require client facing.
+
+```{r}
+#db$reqSkills
+
+skills<-c("machine learning","data mining","datamining","bigdata","SQL","Java","Python","Hadoop","Spark" ,"statistics","databases","programming","development","debugging","web","communication","businessintelligence" )
+length(skills)
+
+num=c()
+for(i in 1:length(skills)){
+  z<-grepl(skills[i],db$reqSkills)
+  num[i]<-sum(z, na.rm=TRUE)
+}
+as.numeric(num)
+
+Skill <- data.frame(skills,num)
+top10<-Skill[order(num,decreasing=T)[1:10],]
+str(top10)
+
+
+
+# Histogram for `top 10 skills`   
+library(plotly)
+p <- plot_ly(x = ~top10$num, y = ~top10$skills, type = 'bar', orientation = 'h', title  = 'Top 10 Skills of Data Scientist in IT')
+p
+
+library(ggplot2)
+ggplot(top10, aes(x = top10$skills, y = top10$num, fill = top10$num)) + 
+  geom_bar(stat = "identity") +
+  xlab("Skills") + 
+  ylab("Frequency") + 
+  theme(legend.position = "none",  
+        axis.text.x = element_text(angle = 65, hjust = 1)) +
+  ggtitle("Top 10 Skills of Data Scientist in IT")  
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
